@@ -37,6 +37,10 @@ def train(training_set_videos, net, optimizer, save_every,
 
             for gt, images in video.get_dataloader(T):
 
+                if use_gpu:
+                    gt = gt.cuda()
+                    images = images.cuda()
+
                 # compute location vec
                 s_t = utils.loc_vec(gt)
 
