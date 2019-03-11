@@ -32,9 +32,6 @@ def train(training_set_videos, net, optimizer, save_every,
 
         for i, video in enumerate(training_set_videos):
 
-            # not to throw cell/hidden state from prev sequence
-            is_new = True
-
             # accumulate reward/weights for info
             ep_video_reward = 0
 
@@ -47,8 +44,7 @@ def train(training_set_videos, net, optimizer, save_every,
                 optimizer.zero_grad()
 
                 # Forward pass to get output
-                outputs = net(images, s_t, is_new, use_gpu)
-                is_new = False
+                outputs = net(images, s_t)
 
                 # sample predictions
                 predictions = utils.sample_predictions(outputs, sigma, N).detach()
@@ -85,6 +81,8 @@ def train(training_set_videos, net, optimizer, save_every,
                                 " Mean Reward: {mean_reward} |"
 
             print(train_info_string.format(**iteration_info_format))
+
+            net.clear_memory()
 
         if save_every is not None:
             if not epoch % save_every:

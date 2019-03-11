@@ -1,6 +1,7 @@
 import torch.nn as nn
 import torch
-
+import torchvision
+import torch.nn.functional as F
 
 """
 =================================================
@@ -9,11 +10,32 @@ import torch
 """
 
 
-class CNN_LSTM(nn.Module):
-    def __init__(self, in_image_dim, characteristic_dim):
-        super(CNN_LSTM, self).__init__()
+class PretrainedCNN(nn.Module):
+    def __init__(self, in_img_dim, out_dim):
+        super(PretrainedCNN, self).__init__()
 
-        # we further assume that they are equal
+        self.in_dim = in_img_dim
+
+        # input image size: (224,224)
+        self.net = torchvision.models.resnet50(pretrained=True)  # 18, 34, 50
+
+        n_features = self.net.fc.in_features
+        for param in self.net.parameters():
+            param.requires_grad = False
+        self.net.fc = nn.Linear(n_features, out_dim)
+
+    def forward(self, x):
+        x = self.resize(x)
+        return self.net(x)
+
+    def resize(self,frame):
+        return F.interpolate(frame, size=(224, 224), mode='nearest')
+
+
+class CustomCNN(nn.Module):
+    def __init__(self, in_image_dim, characteristic_dim):
+        super(CustomCNN, self).__init__()
+
         self.in_img_width = in_image_dim
         now_dim = self.in_img_width
 
@@ -28,9 +50,6 @@ class CNN_LSTM(nn.Module):
 
         # hidden dimension
         self.hidden_dim = characteristic_dim
-
-        # number of lstm layers
-        self.layer_dim = 1
 
         # convolution 1
         conv_channels_1 = 16
@@ -58,41 +77,11 @@ class CNN_LSTM(nn.Module):
         self.pool2 = nn.MaxPool2d(kernel_size=pool_kernel_2)
         now_dim = now_dim // 2
 
-
         # fully connected layer
         now_dim = conv_channels_2 * (now_dim ** 2)
-        self.fc_cnn = nn.Linear(now_dim, self.i_t_dim, bias=True)
+        self.fc_cnn = nn.Linear(now_dim, self.i_t_dim)
 
-        """
-        Input: seq_length x batch_size x input_size
-        Output: seq_length x batch_size x hidden_size
-        """
-        # batch_first=True causes input/output tensors
-        # to be of shape (batch_dim, seq_dim, feature_dim)
-        # layer_dim : number of lstm layers
-        self.lstm = nn.LSTM(self.o_t_dim, self.hidden_dim,
-                            self.layer_dim, batch_first=True)
-
-        self.h_0 = self.c_0 = None
-
-        # Readout layer
-        # self.fc_rnn = nn.Linear(self.hidden_dim, self.output_dim, bias=True)
-
-    def forward(self, x, ground_truth, is_new, use_gpu):
-        # initialize hidden/cell state with zeros
-        # since x is a vec, size(0) yield his len
-        # 1 is batch size
-
-        if is_new:
-            if use_gpu:
-                h_0 = torch.zeros(self.layer_dim, 1, self.hidden_dim).cuda()
-                c_0 = torch.zeros(self.layer_dim, 1, self.hidden_dim).cuda()
-            else:
-                h_0 = torch.zeros(self.layer_dim, 1, self.hidden_dim)
-                c_0 = torch.zeros(self.layer_dim, 1, self.hidden_dim)
-        else:
-            h_0 = self.h_0.detach()
-            c_0 = self.c_0.detach()
+    def forward(self, x):
 
         # convolution 1
         out = self.cnn1(x)
@@ -114,16 +103,49 @@ class CNN_LSTM(nn.Module):
         out = out.view(out.size(0), -1)
 
         # Linear function (readout)
-        out = self.fc_cnn(out)
+        return self.fc_cnn(out)
+
+
+class CNN_LSTM(nn.Module):
+    def __init__(self, in_image_dim, characteristic_dim, use_gpu):
+        super(CNN_LSTM, self).__init__()
+
+        self.use_gpu = use_gpu
+
+        # self.cnn = CustomCNN(in_image_dim, characteristic_dim)
+        self.cnn = PretrainedCNN(in_image_dim, characteristic_dim - 5)
+
+        self.hidden_dim = characteristic_dim
+
+        """
+        Input: seq_length x batch_size x input_size
+        Output: seq_length x batch_size x hidden_size
+        """
+        # batch_first=True causes input/output tensors
+        # to be of shape (batch_dim, seq_dim, feature_dim)
+        # layer_dim : number of lstm layers
+        self.lstm = nn.LSTM(characteristic_dim, self.hidden_dim, 1, batch_first=True)
+
+        self.clear_memory()
+
+    def forward(self, x, gt):
+        # initialize hidden/cell state with zeros
+        # since x is a vec, size(0) yield his len
+        # 1 is batch size
+
+        self.h = self.h.detach()
+        self.c = self.c.detach()
+
+        out = self.cnn(x)
 
         # concatenates ground_truth
-        out = torch.cat((out, ground_truth), 1)
+        out = torch.cat((out, gt), 1)
 
         # batch_size = 1 in our case
         out = out.unsqueeze(0)
 
         # lstm
-        out, (self.h_0, self.c_0) = self.lstm(out, (h_0, c_0))
+        out, (self.h, self.c) = self.lstm(out, (self.h, self.c))
 
         # rid of first batch_dim
         # out = self.fc_rnn(out[-1, :])
@@ -134,9 +156,19 @@ class CNN_LSTM(nn.Module):
 
         return out
 
+    def clear_memory(self):
+        if self.use_gpu:
+            self.h = torch.zeros(1, 1, self.hidden_dim).cuda()
+            self.c = torch.zeros(1, 1, self.hidden_dim).cuda()
+        else:
+            self.h = torch.zeros(1, 1, self.hidden_dim)
+            self.c = torch.zeros(1, 1, self.hidden_dim)
+
 
 if __name__=="__main__":
-    im_size = (64, 64)
-    net = CNN_LSTM(in_image_dim=im_size, characteristic_dim=100)
-    print(net)
+    im_size = 64
+    net = PretrainedCNN(im_size, 100)
+    x = torch.randn(5, 3, 64, 64)
+    ans = net(x)
+    print(ans.size())
 

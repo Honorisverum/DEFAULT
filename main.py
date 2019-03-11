@@ -57,18 +57,20 @@ with open('valid_set.txt') as f:
     validating_set_titles = f.read().splitlines()
 
 
+# GPU
+use_gpu = torch.cuda.is_available()
+
+
 # create net
 
 net = network.CNN_LSTM(in_image_dim=args.image_size,
-                       characteristic_dim=args.dim)
+                       characteristic_dim=args.dim,
+                       use_gpu=use_gpu)
 
 # choose optimizer
 optimizer = torch.optim.Adam(net.parameters(),
                              lr=args.lr)
 
-
-# GPU
-use_gpu = torch.cuda.is_available()
 
 if use_gpu:
     torch.set_default_tensor_type('torch.cuda.FloatTensor')
