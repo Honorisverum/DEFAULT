@@ -8,7 +8,6 @@
 
 import loader
 import torch
-import metrics_plots
 import os
 import argparse
 import network
@@ -60,7 +59,7 @@ with open('valid_set.txt') as f:
 
 # create net
 
-net = network.CNN_LSTM(in_image_dim=args.img,
+net = network.CNN_LSTM(in_image_dim=args.image_size,
                        characteristic_dim=args.dim)
 
 # choose optimizer
@@ -81,8 +80,8 @@ else:
 
 print("LOAD DATA VIDEOS...")
 # prepare train and test sets
-training_set_videos = loader.load_videos(training_set_titles, args.img, use_gpu, 'train', args.vid_dir)
-validating_set_videos = loader.load_videos(validating_set_titles, args.img, use_gpu, 'valid', args.vid_dir)
+training_set_videos = loader.load_videos(training_set_titles, args.image_size, use_gpu, 'train', args.vid_dir)
+validating_set_videos = loader.load_videos(validating_set_titles, args.image_size, use_gpu, 'valid', args.vid_dir)
 print("END LOADING!", end="\n"*2)
 
 """
@@ -103,8 +102,6 @@ net = training.train(training_set_videos=training_set_videos,
                 Valid PHASE 
 =================================================
 """
-
-
 
 valid.compute_tests(validating_set_videos, net, pad_len=max(5, args.T), use_gpu=use_gpu)
 

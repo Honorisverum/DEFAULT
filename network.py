@@ -14,8 +14,7 @@ class CNN_LSTM(nn.Module):
         super(CNN_LSTM, self).__init__()
 
         # we further assume that they are equal
-        self.in_img_width = in_image_dim[0]
-        self.in_img_height = in_image_dim[1]
+        self.in_img_width = in_image_dim
         now_dim = self.in_img_width
 
         # output_dim

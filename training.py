@@ -38,7 +38,7 @@ def train(training_set_videos, net, optimizer, save_every,
             # accumulate reward/weights for info
             ep_video_reward = 0
 
-            for gt, images in zip(video.get_dataloader(T)):
+            for gt, images in video.get_dataloader(T):
 
                 # compute location vec
                 s_t = utils.loc_vec(gt)

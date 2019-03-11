@@ -24,6 +24,8 @@ OVERALL_INFO_STRING = "Total Mean overlap: " \
 
 def compute_tests(testing_set_videos, net, pad_len, use_gpu):
 
+    print("Validation:")
+
     if use_gpu:
         torch.set_default_tensor_type('torch.cuda.FloatTensor')
 
@@ -33,17 +35,12 @@ def compute_tests(testing_set_videos, net, pad_len, use_gpu):
 
     for video in testing_set_videos:
 
-        print("testing {}".format(video.title))
-
         is_initialize = True
         reinitialize_wait = False
         wait_frame = 0
         accuracy_wait_frames = 0
 
-        gt_loader = video.create_gt_iter(1)
-        frames_loader = video.create_frames_iter(1)
-
-        for gt, frames in zip(gt_loader, frames_loader):
+        for gt, frames in video.get_dataloader(1):
 
             # check if it is still waiting time
             if reinitialize_wait:
@@ -85,7 +82,7 @@ def compute_tests(testing_set_videos, net, pad_len, use_gpu):
         # print info
         info_format = {
             'video_title': video.title,
-            'mean_reward': round(ep_video_overlap, 6),
+            'mean_reward': round(ep_video_overlap, 4),
             'n_frames': video.len,
             'n_fails': video.n_fails
         }; print(INFO_STRING.format(**info_format))
@@ -99,8 +96,8 @@ def compute_tests(testing_set_videos, net, pad_len, use_gpu):
 
     # print overall info
     overall_info_format = {
-        'overlap': round(ep_overlap, 6),
-        'robustness': round(ep_robustness, 6)
+        'overlap': round(ep_overlap, 4),
+        'robustness': round(ep_robustness, 4)
     }; print(OVERALL_INFO_STRING.format(**overall_info_format))
 
     print("***********************************************\n\n")
