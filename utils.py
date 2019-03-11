@@ -117,20 +117,6 @@ def compute_baseline(rew):
     return torch.mean(rew, dim=0)
 
 
-# log baseline
-# pred : (T, N, 4)
-# rew : (T, N)
-# out : (T, 4)
-def compute_log_baseline(rew, out, pred, sig):
-    rew = torch.sum(rew, dim=0)
-    out = out.unsqueeze(1).expand_as(pred)
-    df = (out - pred) / (sig ** 2)
-    df = torch.sum(df, dim=2)
-    df = torch.sum(df, dim=0) ** 2
-    numerator = torch.sum(df * rew).item()
-    denominator = torch.sum(df).item()
-    return numerator / denominator
-
 
 # diff : (T, N, 4)
 # out : (T, 4)
