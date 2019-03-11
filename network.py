@@ -115,6 +115,9 @@ class CNN_LSTM(nn.Module):
         # self.cnn = CustomCNN(in_image_dim, characteristic_dim)
         self.cnn = PretrainedCNN(in_image_dim, characteristic_dim - 5)
 
+        if use_gpu:
+            self.cnn = self.cnn.cuda()
+
         self.hidden_dim = characteristic_dim
 
         """
