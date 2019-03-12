@@ -54,16 +54,17 @@ def compute_tests(testing_set_videos, net, pad_len, use_gpu):
             if is_initialize:
                 init_frame_pad = torch.cat([frames]*pad_len, 0)
                 init_gt_pad = torch.cat([gt]*pad_len, 0)
-                _ = net(init_frame_pad, init_gt_pad, True, use_gpu)
-                output = net(frames, gt, False, use_gpu)
+                _ = net(init_frame_pad, init_gt_pad)
+                output = net(frames, gt)
             else:
-                output = net(frames, torch.zeros(1, 5), False, use_gpu)
+                output = net(frames, torch.zeros(1, 5))
 
             # calculate overlap
             overlap = utils.reward2(output.view(-1), gt.view(-1))
 
             # check if overlap is 0, else add to the answer
             if overlap == 0:
+                net.clear_memory()
                 video.n_fails += 1
                 reinitialize_wait = True
                 wait_frame = REINITIALIZE_GAP
